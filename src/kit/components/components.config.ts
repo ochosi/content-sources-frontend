@@ -15,6 +15,7 @@ import {
   type ProgressStepperProps,
   type SkeletonProps,
   type TitleProps,
+  type ToggleGroupProps,
   type ToolbarItemProps,
   type TooltipProps,
 } from '@patternfly/react-core';
@@ -102,6 +103,14 @@ export type LwCardPassthroughProps = Omit<CardProps, 'children' | 'action'>;
 
 /** Defaults for `LwCard`. Lightwell surfaces use glass by default. */
 export type LwCardConfig = Partial<LwCardPassthroughProps>;
+
+// ─── Primitive: LwToggleGroup ────────────────────────────────────────────────
+
+/** PF `ToggleGroup` props forwarded by `LwToggleGroup` (excluding children — kit may own it). */
+export type LwToggleGroupPassthroughProps = Omit<ToggleGroupProps, 'children'>;
+
+/** Defaults for `LwToggleGroup` — call-site wins via merge. */
+export type LwToggleGroupConfig = Partial<LwToggleGroupPassthroughProps>;
 
 // ─── Primitive: LwMenu (PF Dropdown) ─────────────────────────────────────────
 
@@ -193,6 +202,14 @@ export type LwButtonGroupPassthroughProps = Omit<HTMLAttributes<HTMLDivElement>,
 
 /** Defaults for `LwButtonGroup` — layout host; call-site wins via merge. */
 export type LwButtonGroupConfig = Partial<LwButtonGroupPassthroughProps>;
+
+// ─── Assembly: LwTableGroup (layout row) ─────────────────────────────────────
+
+/** Host attrs for `LwTableGroup` (excluding children). */
+export type LwTableGroupPassthroughProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'>;
+
+/** Defaults for `LwTableGroup` — layout host; call-site wins via merge. */
+export type LwTableGroupConfig = Partial<LwTableGroupPassthroughProps>;
 
 // ─── Assembly: LwMetricsStepper (PF ProgressStepper) ─────────────────────────
 
@@ -331,6 +348,7 @@ export interface LwComponentsConfig {
   alert: LwAlertConfig;
   button: LwButtonConfig;
   card: LwCardConfig;
+  toggleGroup: LwToggleGroupConfig;
   menu: LwMenuConfig;
   popover: LwPopoverConfig;
   tooltip: LwTooltipConfig;
@@ -347,6 +365,7 @@ export interface LwComponentsConfig {
   pageHeader: LwPageHeaderConfig;
   pageHeaderHero: LwPageHeaderHeroConfig;
   buttonGroup: LwButtonGroupConfig;
+  tableGroup: LwTableGroupConfig;
   metricsStepper: LwMetricsStepperConfig;
   metricsCount: LwMetricsCountConfig;
   metricsCard: LwMetricsCardConfig;
@@ -370,6 +389,9 @@ export const componentsConfig: LwComponentsConfig = {
   card: {
     // Lightwell surfaces use glass cards by default.
     isGlass: true,
+  },
+  toggleGroup: {
+    // No Lightwell-specific ToggleGroup defaults yet — PF default pattern only.
   },
   checkbox: {
     // No Lightwell-specific Checkbox defaults yet.
@@ -428,6 +450,9 @@ export const componentsConfig: LwComponentsConfig = {
   },
   buttonGroup: {
     // Layout defaults live in button-group.css (gap / align).
+  },
+  tableGroup: {
+    // Layout defaults live in table-group.css (gap / align).
   },
   metricsStepper: {
     // PF ProgressStepper is vertical below md; React has no isHorizontal — kit applies pf-m-horizontal.
@@ -491,6 +516,10 @@ export function getLwCardDefaults(): LwCardConfig {
 
 export function getLwMenuDefaults(): LwMenuConfig {
   return { ...componentsConfig.menu };
+}
+
+export function getLwToggleGroupDefaults(): LwToggleGroupConfig {
+  return { ...componentsConfig.toggleGroup };
 }
 
 export function getLwPopoverDefaults(): LwPopoverConfig {
@@ -558,6 +587,10 @@ export function getLwPageHeaderHeroDefaults(): LwPageHeaderHeroConfig {
 
 export function getLwButtonGroupDefaults(): LwButtonGroupConfig {
   return { ...componentsConfig.buttonGroup };
+}
+
+export function getLwTableGroupDefaults(): LwTableGroupConfig {
+  return { ...componentsConfig.tableGroup };
 }
 
 export function getLwMetricsStepperDefaults(): LwMetricsStepperConfig {

@@ -277,11 +277,13 @@ type LwDataViewOwnedProps = {
    */
   isCardless?: boolean;
   /**
-   * Sticky **columns** — horizontal scroll via `OuterScrollContainer`/
-   * `InnerScrollContainer`, so columns with `props.isStickyColumn` pin while
-   * scrolling. **Opt-in only** — not a default. Requires verified layout
-   * context (columns actually marked `isStickyColumn`); do not enable
-   * speculatively.
+   * Sticky **columns** — every table scrolls horizontally via
+   * `OuterScrollContainer`/`InnerScrollContainer` unconditionally (a
+   * scrollable table and sticky columns are different PatternFly concepts);
+   * this only additionally pins columns with `props.isStickyColumn` while
+   * that scrolling happens. **Opt-in only** — not a default. Requires
+   * verified layout context (columns actually marked `isStickyColumn`); do
+   * not enable speculatively.
    *
    * Does **not** enable sticky *header* — that needs a height-bounded
    * scroll context to mean anything (the header sticks relative to its own
@@ -643,6 +645,12 @@ export function LwDataView({
         // Resident rows are the whole result set, so the assembly knows the
         // total — a call site has nothing to say about it.
         itemCount: isResident ? rows.length : (pagination.itemCount ?? 0),
+        // Clamped even when `page` is controlled: once the resident set shrinks
+        // (e.g. a filter removes rows) a caller-held page can point past the
+        // new last page. Rendering that unclamped would show zero rows while
+        // the pagination control still displays the caller's stale number —
+        // clamping drives both the rendered rows and the control's displayed
+        // page together instead of letting them desync.
         page: isResident
           ? Math.max(1, Math.min(requestedPage, Math.ceil(rows.length / resolvedPerPage)))
           : requestedPage,
@@ -744,6 +752,17 @@ export function LwDataView({
   // comment below for why.
   const tableProps = mergeComponentProps(pfDefaults, {
     ...rest,
+    // Sticky *columns* and a *scrollable* table are different things (every
+    // table scrolls horizontally via the Outer/InnerScrollContainer wrap
+    // below, unconditionally) — `isSticky` only decides whether this specific
+    // table also pins columns while scrolling. Scoped to the class, not the
+    // wrapper's mere presence, so the `width: max-content` rule below (data-
+    // view.css) — which lets sticky columns overflow intentionally instead of
+    // being squeezed to fit — doesn't also apply to tables that don't opt in.
+    className: mergeClassNames(
+      isSticky ? 'lw-c-data-view__table--sticky' : undefined,
+      rest.className,
+    ),
     variant: compact ? ('compact' as const) : undefined,
     // PF adds the row toggle to the body only; supply its matching header.
     columns:
@@ -785,22 +804,27 @@ export function LwDataView({
   );
 
   // ─── DataView branches ────────────────────────────────────────────────────
-  // `isSticky` is the opt-in signal (verified layout context, not auto-derived
-  // — see skill) that sticky COLUMNS are in play — horizontal scroll via
-  // Outer/InnerScrollContainer, not vertical sticky header.
+  // A scrollable table and sticky columns are two different PatternFly
+  // concepts (patternfly.org/components/table — "Sticky column" wraps
+  // `InnerScrollContainer` to make *specific* columns pin; it doesn't say
+  // only sticky tables may scroll). Every `LwDataView` table gets the
+  // Outer/InnerScrollContainer wrap unconditionally, so any table can scroll
+  // horizontally instead of forcing columns to squeeze into the viewport —
+  // `isSticky` (above) only adds the opt-in class that lets specific columns
+  // additionally pin in place while that scrolling happens.
   //
   // `DataViewTableBasic` (what `DataViewTable` always renders underneath —
-  // confirmed by reading PF's source) couples its OWN `isSticky` prop to
-  // BOTH concerns at once: it wraps in Outer/InnerScrollContainer *and*
-  // unconditionally forces `isStickyHeader: true` on the underlying `Table`,
-  // with no way to opt out of just the header half. Sticky header only means
-  // anything with a height-bounded scroll context (it sticks relative to its
-  // own scrolling ancestor); table height isn't bounded today, so sticky
-  // header would be a no-op at best — held pending that refactor (D26), not
-  // shipped half-working. So `tableProps` (above) never includes `isSticky`
-  // — `DataViewTableBasic` always takes its plain, unwrapped `<Table>`
-  // branch — and the scroll-wrapper/sticky-column behavior is built here
-  // instead, only when `isSticky` is set.
+  // confirmed by reading PF's source) has its OWN `isSticky` prop, which
+  // couples TWO concerns at once: it wraps in Outer/InnerScrollContainer
+  // *and* unconditionally forces `isStickyHeader: true` on the underlying
+  // `Table`, with no way to opt out of just the header half. Sticky header
+  // only means anything with a height-bounded scroll context (it sticks
+  // relative to its own scrolling ancestor); table height isn't bounded
+  // today, so sticky header would be a no-op at best — held pending that
+  // refactor (D26), not shipped half-working. So `tableProps` (above) never
+  // includes `isSticky` — `DataViewTableBasic` always takes its plain,
+  // unwrapped `<Table>` branch — and the scroll wrap is built here instead,
+  // unconditionally, with no sticky-header side effect.
   //
   // The empty state nests inside `OuterScrollContainer`, as a sibling of
   // `InnerScrollContainer` — not inside the scrollable inner region itself
@@ -809,16 +833,11 @@ export function LwDataView({
   // the full drawer+panel row's width once a `panel` is present.
   const tableNode = <DataViewTable {...tableProps} />;
 
-  const tableAndEmptyState = isSticky ? (
+  const tableAndEmptyState = (
     <OuterScrollContainer>
       <InnerScrollContainer>{tableNode}</InnerScrollContainer>
       {emptyStateNode}
     </OuterScrollContainer>
-  ) : (
-    <>
-      {tableNode}
-      {emptyStateNode}
-    </>
   );
 
   const tableSurface = panel ? (

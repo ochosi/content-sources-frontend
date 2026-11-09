@@ -17,6 +17,9 @@ export type {
 export { LwButtonGroup } from './button-group/button-group';
 export type { LwButtonGroupProps } from './button-group/button-group';
 
+export { LwTableGroup, LwTableGroupItem } from './table-group/table-group';
+export type { LwTableGroupProps, LwTableGroupItemProps } from './table-group/table-group';
+
 export { LwLoaded } from './loaded/loaded';
 export type { LwLoadedProps } from './loaded/loaded';
 

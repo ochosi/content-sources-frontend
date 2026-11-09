@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react';
 import {
   LwDataView,
+  LwTableGroup,
+  LwTableGroupItem,
   type LwDataViewManageColumn,
   type LwDataViewTd,
 } from 'kit/components/assemblies';
@@ -136,7 +139,6 @@ function PackageDetails({ group }: { group: Vulnerability[] }) {
             <LwDataView
               isCardless
               isCompact
-              className='beacon-package-details-table'
               aria-label={`${statusLabel(status)} vulnerabilities for ${group[0].componentName} ${group[0].componentVersion}`}
               columns={columns}
               rows={vulnerabilities.map((v) => ({
@@ -156,6 +158,33 @@ function PackageDetails({ group }: { group: Vulnerability[] }) {
       })}
     </div>
   );
+}
+
+/**
+ * `LwDataViewTd` is a bare value or `{ cell, props }` — only the object form
+ * carries per-cell `TdProps`. Normalize every summary cell to that shape so
+ * every column gets both of these:
+ *
+ * - `dataLabel` (PF's `data-label`, the row's field name at the responsive
+ *   breakpoint where the table stacks into label/value pairs; PF types it as
+ *   plain text, not a column's full `ReactNode` header), the same way the
+ *   per-vulnerability detail table (`renderDetailCell` call sites above)
+ *   already does.
+ * - `modifier: 'breakWord'` — same mechanism the vulnerability table already
+ *   uses on its `component` column, and a PF-supported replacement for a
+ *   blanket `overflow-wrap: anywhere` page CSS rule this used to carry.
+ *   PF's own base styles already set `overflow-wrap: break-word` on every
+ *   cell; `modifier: 'breakWord'` additionally lets a column's content
+ *   shrink below its longest unbreakable word instead of only wrapping as a
+ *   last resort — a page CSS override can't reach that without redeclaring
+ *   PF's own internal cell rule.
+ */
+function finishSummaryCell(cell: LwDataViewTd, columnHeader: ReactNode): LwDataViewTd {
+  const dataLabel = typeof columnHeader === 'string' ? columnHeader : undefined;
+  if (cell !== null && typeof cell === 'object' && 'cell' in cell) {
+    return { ...cell, props: { modifier: 'breakWord', ...cell.props, dataLabel } };
+  }
+  return { cell, props: { modifier: 'breakWord', dataLabel } };
 }
 
 /** Group the full filtered result, never a single API page. */
@@ -212,27 +241,28 @@ export function buildPackageRows(
         cell: severity ? severityLabel(severity) : '—',
         props: { sortValue: severity ? SEVERITIES.indexOf(severity) : SEVERITIES.length },
       },
+      // One icon+count per severity, always exactly four items — `noWrap`
+      // keeps them on one line. PF's own cell-level `nowrap` modifier only
+      // sets `white-space` (a text property); it has no effect on this
+      // flex container's own wrap behavior, so the row has to opt out of
+      // wrapping on `LwTableGroup` itself, not via the table cell's props.
       severityCounts: (
-        <span key='severityCounts' className='beacon-package-counts'>
+        <LwTableGroup key='severityCounts' noWrap>
           {CVE_SEVERITIES.map((meta) => {
             const count = severityCounts.get(meta.key) ?? 0;
             return (
               <LwTooltip key={meta.key} content={meta.label} position='top'>
-                <span
-                  className='beacon-package-counts__item'
-                  aria-label={`${meta.label}: ${count}`}
-                  tabIndex={0}
-                >
+                <LwTableGroupItem aria-label={`${meta.label}: ${count}`} tabIndex={0}>
                   {renderCveSeverityIcon(meta)}
                   <span>{count}</span>
-                </span>
+                </LwTableGroupItem>
               </LwTooltip>
             );
           })}
-        </span>
+        </LwTableGroup>
       ),
       statuses: (
-        <span key='statuses' className='beacon-package-counts'>
+        <LwTableGroup key='statuses'>
           {PACKAGE_STATUS_ORDER.map((status) => {
             const count = new Set(
               group.filter((v) => v.status === status).map((v) => v.vulnerabilityId),
@@ -241,24 +271,19 @@ export function buildPackageRows(
             const presentation = getPipelineStepPresentation(status);
             return (
               <LwTooltip key={status} content={statusLabel(status)} position='top'>
-                <span
-                  className='beacon-package-counts__item'
-                  aria-label={`${statusLabel(status)}: ${count}`}
-                  tabIndex={0}
-                >
+                <LwTableGroupItem aria-label={`${statusLabel(status)}: ${count}`} tabIndex={0}>
                   <LwIcon
-                    size='sm'
                     aria-hidden='true'
                     style={{ color: lightwellConfig.colors.stepIcon[presentation.color] }}
                   >
                     {presentation.icon}
                   </LwIcon>
                   <span>{count}</span>
-                </span>
+                </LwTableGroupItem>
               </LwTooltip>
             );
           })}
-        </span>
+        </LwTableGroup>
       ),
       publishedVersions: {
         cell: <PublishedVersions versions={highestVersion} />,
@@ -270,7 +295,9 @@ export function buildPackageRows(
     return {
       id,
       expandedContent: <PackageDetails group={group} />,
-      row: columns.filter((column) => column.isShown).map((column) => cells[column.key]),
+      row: columns
+        .filter((column) => column.isShown)
+        .map((column) => finishSummaryCell(cells[column.key], column.cell)),
     };
   });
 }

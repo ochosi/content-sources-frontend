@@ -294,7 +294,7 @@ Before a new file, wrapper, hook, or DTO:
 | Put JSX item arrays in `constants.ts` | Use `.tsx` (e.g. `slaPolicyItems.tsx`) or hydrate above the page return |
 | Short icon-help / circle help dialect | `LwTooltip` (default trigger = `LwButton isCircle`); richer = `LwPopover` + circle `LwButton` |
 | Raw PF `EmptyState` / `Skeleton` in Lightwell chrome | Root-only `LwEmptyState` / `LwSkeleton`; Footer/Actions/Body stay call-site children |
-| ≥2 independent consumers hand-roll the same workaround for the same assembly | Not page-specific need — convergence is proof; promote the capability into the assembly |
+| ≥2 independent consumers hand-roll the same workaround for the same assembly | Not page-specific need — convergence is proof; promote the capability into the assembly. Convergence means the same underlying problem, not the same prop value for unrelated reasons — two columns both passing `modifier: 'nowrap'` for their own separate layout needs is not evidence every column should default to `nowrap` |
 | Re-pointing a consumer onto an assembly before it does what that consumer needs | Finish the assembly first — the re-point should be a near-mechanical diff, not invention |
 | New logic needed, and the nearest existing file is a non-Kit component/utility the page already imports | UI capability → Kit; page-specific → the page. Logic genuinely shared across multiple pages/consumers may live in an appropriate product-owned domain module — being in the dependency chain alone doesn't make an existing file fair game, but a real cross-page domain concern isn't forced into Kit or duplicated per page either |
 
@@ -523,6 +523,8 @@ Example — one page header, plain or hero surface:
 | Bare metric number in chrome / title | PF `Truncate` — stacked count cell and `LwMetricsStepper` values: container Truncate (width-based; `maxCharsDisplayed` would disable it); single-line title run only: `maxCharsDisplayed` (`pf-m-fixed`) so `inline-grid` does not break the line |
 | Page hand-rolls active-state derivation, panel-expand breakpoint state, or raw PF filter wiring the assembly could own | Extend the assembly; delete the page copy. Example: three `LwDataView` consumers each independently called `useTableActiveState` and wired raw PF `DataViewFilters` before `isLoading` derivation and a filter capability existed in the assembly — the fix is in `LwDataView`, not a fourth bespoke copy |
 | Consumer re-pointed onto an assembly before the capability it needs exists there | Hold the re-point; finish the assembly first. Re-pointing early is what produced the hand-rolled copies above in the first place |
+| Table-level `isSticky`-style flag also gating whether the table may scroll horizontally at all | Scrollable and sticky columns are different PatternFly concepts (patternfly.org/components/table) — sticky columns need `InnerScrollContainer` to pin correctly while scrolling, but that doesn't mean only sticky tables are allowed to scroll. Wrap every table's horizontal scroll unconditionally; let the sticky flag only add the opt-in pin behavior on top |
+| PF cell `modifier` (`nowrap` / `breakWord`) expected to control a kit assembly's own flex-wrap inside that cell | It can't — `modifier` only sets the `Td`/`Th`'s own `white-space` / `word-break`, which has no effect on a separate flex container (e.g. an icon+count group) rendered inside it. The wrap/no-wrap decision belongs to the assembly that owns that flex layout (an explicit prop there), not the surrounding cell |
 
 Extended: [examples.md](examples.md).
 

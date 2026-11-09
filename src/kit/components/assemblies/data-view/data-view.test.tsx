@@ -28,30 +28,44 @@ it('opts into compact density only when isCompact is set', () => {
   expect(screen.getByRole('grid', { name: 'Compact table' })).toHaveClass('pf-m-compact');
 });
 
-// ─── Sticky columns ────────────────────────────────────────────────────────────
-// `isSticky` means sticky COLUMNS (horizontal scroll via Outer/InnerScroll-
-// Container), not sticky header — `DataViewTableBasic` (what `DataViewTable`
-// always renders underneath) couples its own `isSticky` to both at once with
-// no way to opt out of just the header half, and header stickiness needs a
-// height-bounded scroll context LwDataView doesn't have yet (D26, held). So
-// `isSticky` is never forwarded into `DataViewTableBasic`'s own prop — the
-// wrapper is built here instead, and sticky header never activates.
+// ─── Scrollable table vs. sticky columns ───────────────────────────────────
+// Two different PatternFly concepts (patternfly.org/components/table):
+// every table scrolls horizontally via Outer/InnerScrollContainer
+// unconditionally; `isSticky` only additionally pins columns marked
+// `props.isStickyColumn` while that scrolling happens. It is not sticky
+// header — `DataViewTableBasic` (what `DataViewTable` always renders
+// underneath) couples its own `isSticky` to both at once with no way to opt
+// out of just the header half, and header stickiness needs a height-bounded
+// scroll context LwDataView doesn't have yet (D26, held). So `isSticky` is
+// never forwarded into `DataViewTableBasic`'s own prop — the wrapper is
+// built here instead, and sticky header never activates.
 
-it('renders exactly one scroll-wrapper pair when isSticky is set', () => {
+it('wraps every table in exactly one scroll-wrapper pair, sticky or not', () => {
   const { container } = render(
-    <LwDataView aria-label='Sticky table' columns={columns} rows={rows} isSticky />,
+    <LwDataView aria-label='Plain table' columns={columns} rows={rows} />,
   );
 
   expect(container.querySelectorAll('.pf-v6-c-scroll-outer-wrapper')).toHaveLength(1);
   expect(container.querySelectorAll('.pf-v6-c-scroll-inner-wrapper')).toHaveLength(1);
 });
 
-it('renders no scroll wrappers when isSticky is not set', () => {
+it('gives a non-sticky table the Card-matching corner radius for free from the (now unconditional) scroll wrapper', () => {
   const { container } = render(
     <LwDataView aria-label='Plain table' columns={columns} rows={rows} />,
   );
 
-  expect(container.querySelector('.pf-v6-c-scroll-outer-wrapper')).not.toBeInTheDocument();
+  expect(container.querySelector('.pf-v6-c-scroll-outer-wrapper')).toBeInTheDocument();
+  expect(screen.getByRole('grid', { name: 'Plain table' })).not.toHaveClass(
+    'lw-c-data-view__table--sticky',
+  );
+});
+
+it('marks only sticky tables with the sticky class that scopes the column-overflow width rule', () => {
+  render(<LwDataView aria-label='Sticky table' columns={columns} rows={rows} isSticky />);
+
+  expect(screen.getByRole('grid', { name: 'Sticky table' })).toHaveClass(
+    'lw-c-data-view__table--sticky',
+  );
 });
 
 it('does not enable sticky header when isSticky is set', () => {
@@ -710,6 +724,28 @@ it('skips sort injection for columns with isSortable: false', () => {
   // Only "Name" gets a sort button; "Status" does not
   expect(screen.getByRole('button', { name: /Name/i })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Status/i })).not.toBeInTheDocument();
+});
+
+it("leaves PF's own default header modifier (truncate) alone when a column sets none", () => {
+  const plainColumns = [{ cell: 'Name' }];
+
+  render(<LwDataView aria-label='Plain header table' columns={plainColumns} rows={rows} />);
+
+  expect(screen.getByRole('columnheader', { name: 'Name' })).toHaveClass('pf-m-truncate');
+});
+
+it("lets a column set its own modifier, overriding PF's truncate default", () => {
+  const columnsWithModifier = [
+    { cell: 'Title', props: { modifier: 'wrap' as const, isSortable: false } },
+  ];
+
+  render(
+    <LwDataView aria-label='Modifier override table' columns={columnsWithModifier} rows={rows} />,
+  );
+
+  const header = screen.getByRole('columnheader', { name: 'Title' });
+  expect(header).toHaveClass('pf-m-wrap');
+  expect(header).not.toHaveClass('pf-m-truncate');
 });
 
 it('calls onSortChange with columnIndex and direction when a column header is clicked', async () => {

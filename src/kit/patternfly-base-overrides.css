@@ -150,3 +150,9 @@
 .pf-v6-c-table.pf-m-sticky-header {
   --pf-v6-c-table--m-sticky-header--BackgroundColor: transparent;
 }
+
+/* PF's nested scroll wrapper has a fixed minimum height that can leave
+ * empty space below a shorter table. */
+.pf-v6-c-scroll-outer-wrapper .pf-v6-c-scroll-outer-wrapper {
+  min-height: auto;
+}

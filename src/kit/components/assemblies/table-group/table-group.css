@@ -1,0 +1,21 @@
+/* LwTableGroup / LwTableGroupItem — layout row for standard table-cell items
+ * (icon+count pairs, status chips, …). KitCssScopePlugin already wraps — do
+ * not re-scope the theme class. Gaps from components.config.css.
+ */
+
+.lw-c-table-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--lw-space--table-group-gap);
+}
+
+.lw-c-table-group.lw-m-no-wrap {
+  flex-wrap: nowrap;
+}
+
+.lw-c-table-group-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lw-space--table-group-item-gap);
+}
